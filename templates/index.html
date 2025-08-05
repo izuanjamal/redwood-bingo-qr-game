@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <h2>Welcome to Redwood Birthday Bingo!</h2>
+    <p style="font-size: 1.1rem; color: #666; margin: 20px 0;">
+        Create a fun bingo game for your birthday celebration. Guests can join by scanning a QR code!
+    </p>
+    
+    <div style="margin: 40px 0;">
+        <h3>Host a New Game</h3>
+        <form method="POST" action="/create_game" style="max-width: 400px; margin: 20px auto;">
+            <div class="form-group">
+                <label for="host_name">Your Name (Host):</label>
+                <input type="text" id="host_name" name="host_name" required placeholder="Enter your name">
+            </div>
+            <button type="submit" class="btn">🎮 Create Game</button>
+        </form>
+    </div>
+    
+    <div style="margin: 40px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <h3>How to Play</h3>
+        <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+            <ol style="padding-left: 20px; line-height: 1.6;">
+                <li><strong>Host creates a game</strong> - Enter your name and click "Create Game"</li>
+                <li><strong>Share the QR code</strong> - Guests scan it to join instantly</li>
+                <li><strong>Guests get bingo cards</strong> - Each player gets a unique card with birthday-themed words</li>
+                <li><strong>Host calls out words</strong> - Players mark matching squares on their cards</li>
+                <li><strong>First to get BINGO wins!</strong> - Complete a row, column, or diagonal to win</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div style="background: linear-gradient(45deg, #ff9a9e, #fecfef); padding: 20px; border-radius: 10px; color: #333;">
+        <h4>🎂 Birthday Theme Words Include:</h4>
+        <p style="margin: 10px 0;">
+            Happy Birthday • Cake • Candles • Presents • Balloons • Party Hat • Music • Dancing • Friends • Family • Laughter • Photos • Memories • And many more!
+        </p>
+    </div>
+</div>
+{% endblock %}
