@@ -165,7 +165,10 @@ def generate_game_id():
 
 def generate_qr_code(game_id):
     # Generate QR code for joining the game
-    join_url = f"http://localhost:5000/join/{game_id}"
+    # Use environment variable for production URL, fallback to localhost for development
+    base_url = os.getenv('BASE_URL', 'http://localhost:5000')
+    join_url = f"{base_url}/join/{game_id}"
+    
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(join_url)
     qr.make(fit=True)
@@ -377,4 +380,8 @@ def on_disconnect():
         leave_room(game_id)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='localhost', port=5000, allow_unsafe_werkzeug=True)
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') == 'development'
+    host = '0.0.0.0' if not debug else 'localhost'
+    
+    socketio.run(app, debug=debug, host=host, port=port, allow_unsafe_werkzeug=True)
