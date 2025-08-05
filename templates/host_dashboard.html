@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Host Dashboard - Redwood Birthday Bingo{% endblock %}
+{% block subtitle %}Game ID: {{ game_id }} | Host: {{ host_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-top: 20px;
+    }
+    
+    .qr-section, .controls-section {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 15px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .qr-code {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .qr-code img {
+        max-width: 250px;
+        border: 5px solid white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .game-id {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #4CAF50;
+        text-align: center;
+        margin: 10px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        border: 3px dashed #4CAF50;
+    }
+    
+    .word-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin: 20px 0;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .word-btn {
+        padding: 10px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 12px;
+        text-align: center;
+    }
+    
+    .word-btn:hover {
+        background: #4CAF50;
+        color: white;
+        border-color: #4CAF50;
+    }
+    
+    .word-btn.called {
+        background: #ff6b6b;
+        color: white;
+        border-color: #ff6b6b;
+        cursor: not-allowed;
+    }
+    
+    .status-panel {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        border-left: 5px solid #4CAF50;
+    }
+    
+    .player-count {
+        font-size: 1.5rem;
+        color: #4CAF50;
+        font-weight: bold;
+    }
+    
+    .called-words {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+        min-height: 100px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .called-word {
+        display: inline-block;
+        background: #ff6b6b;
+        color: white;
+        padding: 5px 10px;
+        margin: 3px;
+        border-radius: 15px;
+        font-size: 12px;
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h2>🎮 Game Dashboard</h2>
+    <div class="game-id">{{ game_id }}</div>
+</div>
+
+<div class="dashboard">
+    <div class="qr-section">
+        <h3>📱 QR Code for Guests</h3>
+        <p>Share this QR code with your guests so they can join the game instantly!</p>
+        
+        <div class="qr-code">
+            <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code to join game">
+        </div>
+        
+        <div style="text-align: center;">
+            <p><strong>Or share this link:</strong></p>
+            <code style="background: #e9ecef; padding: 5px 10px; border-radius: 5px;">
+                http://localhost:5000/join/{{ game_id }}
+            </code>
+        </div>
+    </div>
+    
+    <div class="controls-section">
+        <h3>🎯 Game Controls</h3>
+        
+        <div class="status-panel">
+            <div>Players Connected: <span class="player-count" id="playerCount">0</span></div>
+            <div>Words Called: <span id="wordsCalledCount">0</span></div>
+            <div id="gameStatus">Game Ready</div>
+        </div>
+        
+        <div>
+            <h4>Called Words:</h4>
+            <div class="called-words" id="calledWords">
+                <em>No words called yet</em>
+            </div>
+        </div>
+        
+        <div class="mt-20">
+            <button class="btn btn-secondary" onclick="startGame()">🚀 Start Game</button>
+            <button class="btn btn-danger" onclick="resetGame()">🔄 Reset Game</button>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: 30px;">
+    <h3>🎲 Call Words</h3>
+    <p>Click on words to call them out to players:</p>
+    
+    <div class="word-grid" id="wordGrid">
+        <!-- Words will be populated by JavaScript -->
+    </div>
+</div>
+
+<div id="winnerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 20px; text-align: center;">
+        <h2>🎉 We have a winner! 🎉</h2>
+        <p id="winnerName" style="font-size: 1.5rem; color: #4CAF50; margin: 20px 0;"></p>
+        <button class="btn" onclick="closeWinnerModal()">Continue Playing</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const socket = io();
+    const words = [
+        "HAPPY BIRTHDAY", "CAKE", "CANDLES", "PRESENTS", "BALLOONS",
+        "PARTY HAT", "MUSIC", "DANCING", "FRIENDS", "FAMILY",
+        "LAUGHTER", "PHOTOS", "MEMORIES", "CELEBRATION", "WISHES",
+        "CONFETTI", "STREAMERS", "GAMES", "FUN", "JOY",
+        "SMILE", "CHEERS", "TOAST", "SURPRISE", "HUGS",
+        "SINGING", "DECORATIONS", "FOOD", "DRINKS", "ENTERTAINMENT"
+    ];
+    
+    let calledWords = [];
+    
+    // Initialize word grid
+    function initWordGrid() {
+        const wordGrid = document.getElementById('wordGrid');
+        wordGrid.innerHTML = '';
+        
+        words.forEach(word => {
+            const wordBtn = document.createElement('button');
+            wordBtn.className = 'word-btn';
+            wordBtn.textContent = word;
+            wordBtn.onclick = () => callWord(word);
+            wordBtn.id = `word-${word.replace(/\s+/g, '-')}`;
+            wordGrid.appendChild(wordBtn);
+        });
+    }
+    
+    function callWord(word) {
+        if (calledWords.includes(word)) return;
+        
+        socket.emit('call_word', {word: word});
+    }
+    
+    function startGame() {
+        document.getElementById('gameStatus').textContent = 'Game Active';
+        document.getElementById('gameStatus').style.color = '#4CAF50';
+    }
+    
+    function resetGame() {
+        if (confirm('Are you sure you want to reset the game?')) {
+            location.reload();
+        }
+    }
+    
+    function closeWinnerModal() {
+        document.getElementById('winnerModal').style.display = 'none';
+    }
+    
+    // Socket events
+    socket.on('player_count', function(data) {
+        document.getElementById('playerCount').textContent = data.count;
+    });
+    
+    socket.on('word_called', function(data) {
+        const word = data.word;
+        calledWords.push(word);
+        
+        // Update called words display
+        const calledWordsDiv = document.getElementById('calledWords');
+        const wordSpan = document.createElement('span');
+        wordSpan.className = 'called-word';
+        wordSpan.textContent = word;
+        
+        if (calledWords.length === 1) {
+            calledWordsDiv.innerHTML = '';
+        }
+        calledWordsDiv.appendChild(wordSpan);
+        
+        // Update word button
+        const wordBtn = document.getElementById(`word-${word.replace(/\s+/g, '-')}`);
+        if (wordBtn) {
+            wordBtn.classList.add('called');
+            wordBtn.onclick = null;
+        }
+        
+        // Update count
+        document.getElementById('wordsCalledCount').textContent = calledWords.length;
+    });
+    
+    socket.on('game_winner', function(data) {
+        document.getElementById('winnerName').textContent = data.winner;
+        document.getElementById('winnerModal').style.display = 'block';
+    });
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        initWordGrid();
+    });
+</script>
+{% endblock %}

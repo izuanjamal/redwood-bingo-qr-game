@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Join Game - Redwood Birthday Bingo{% endblock %}
+{% block subtitle %}Join Game {{ game_id }}{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h2>🎮 Join the Birthday Bingo Game!</h2>
+    <p style="font-size: 1.1rem; color: #666; margin: 20px 0;">
+        You're about to join an exciting birthday bingo game. Enter your name to get your personalized bingo card!
+    </p>
+    
+    <div style="background: linear-gradient(45deg, #ff9a9e, #fecfef); padding: 20px; border-radius: 15px; margin: 20px 0; color: #333;">
+        <h3>Game ID: {{ game_id }}</h3>
+    </div>
+    
+    <form method="POST" action="/join_game" style="max-width: 400px; margin: 30px auto;">
+        <input type="hidden" name="game_id" value="{{ game_id }}">
+        
+        <div class="form-group">
+            <label for="player_name">Your Name:</label>
+            <input type="text" id="player_name" name="player_name" required 
+                   placeholder="Enter your name" 
+                   style="font-size: 18px; padding: 15px;">
+        </div>
+        
+        <button type="submit" class="btn" style="font-size: 18px; padding: 15px 40px;">
+            🎯 Join Game & Get My Bingo Card!
+        </button>
+    </form>
+    
+    <div style="margin: 40px 0; padding: 20px; background: #e8f5e8; border-radius: 10px; border-left: 5px solid #4CAF50;">
+        <h4>🎲 How to Play</h4>
+        <div style="text-align: left; max-width: 500px; margin: 0 auto;">
+            <ul style="padding-left: 20px; line-height: 1.6;">
+                <li>You'll get a unique 5x5 bingo card with birthday-themed words</li>
+                <li>Listen as the host calls out words during the party</li>
+                <li>Tap the squares on your card when you hear matching words</li>
+                <li>First to complete a row, column, or diagonal wins!</li>
+                <li>Shout "BINGO!" when you win! 🎉</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

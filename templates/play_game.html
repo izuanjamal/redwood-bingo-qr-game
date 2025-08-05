@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Playing Bingo - Redwood Birthday Bingo{% endblock %}
+{% block subtitle %}{{ player_data.name }}'s Bingo Card{% endblock %}
+
+{% block extra_css %}
+<style>
+    .game-container {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 30px;
+        margin-top: 20px;
+    }
+    
+    .bingo-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        border: 3px solid #4CAF50;
+    }
+    
+    .bingo-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        margin: 20px 0;
+    }
+    
+    .bingo-square {
+        aspect-ratio: 1;
+        background: #f8f9fa;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 5px;
+        word-wrap: break-word;
+        hyphens: auto;
+    }
+    
+    .bingo-square:hover {
+        background: #e3f2fd;
+        border-color: #2196F3;
+        transform: scale(1.05);
+    }
+    
+    .bingo-square.marked {
+        background: #4CAF50;
+        color: white;
+        border-color: #4CAF50;
+        transform: scale(0.95);
+    }
+    
+    .bingo-square.free {
+        background: #ff6b6b;
+        color: white;
+        border-color: #ff6b6b;
+    }
+    
+    .bingo-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .bingo-letters {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+    
+    .bingo-letter {
+        background: #4CAF50;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        border-radius: 8px;
+    }
+    
+    .game-info {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        height: fit-content;
+    }
+    
+    .status-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        border-left: 4px solid #4CAF50;
+    }
+    
+    .called-words-panel {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 15px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .called-word {
+        display: inline-block;
+        background: #4CAF50;
+        color: white;
+        padding: 4px 8px;
+        margin: 2px;
+        border-radius: 12px;
+        font-size: 11px;
+    }
+    
+    .instructions {
+        background: linear-gradient(45deg, #ff9a9e, #fecfef);
+        color: #333;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .winner-celebration {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .winner-content {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        animation: bounce 0.6s ease-in-out;
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 60%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-20px); }
+        80% { transform: translateY(-10px); }
+    }
+    
+    @media (max-width: 768px) {
+        .game-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .bingo-square {
+            font-size: 9px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-container">
+    <div class="bingo-card">
+        <div class="bingo-header">
+            <h2>🎯 Your Bingo Card</h2>
+            <p>Game ID: <strong>{{ game_id }}</strong></p>
+        </div>
+        
+        <div class="bingo-letters">
+            <div class="bingo-letter">B</div>
+            <div class="bingo-letter">I</div>
+            <div class="bingo-letter">N</div>
+            <div class="bingo-letter">G</div>
+            <div class="bingo-letter">O</div>
+        </div>
+        
+        <div class="bingo-grid" id="bingoGrid">
+            <!-- Bingo squares will be populated by JavaScript -->
+        </div>
+    </div>
+    
+    <div class="game-info">
+        <div class="instructions">
+            <h4>📋 Instructions</h4>
+            <ul style="padding-left: 20px; margin: 10px 0; line-height: 1.4;">
+                <li>Listen for words called by the host</li>
+                <li>Click matching squares on your card</li>
+                <li>Get 5 in a row to win BINGO!</li>
+            </ul>
+        </div>
+        
+        <div class="status-card">
+            <h4>🎮 Game Status</h4>
+            <div id="gameStatus">Waiting for host...</div>
+            <div>Words Called: <span id="wordsCalledCount">{{ current_calls|length }}</span></div>
+        </div>
+        
+        <div class="called-words-panel">
+            <h4>📢 Called Words</h4>
+            <div id="calledWordsDisplay">
+                {% if current_calls %}
+                    {% for word in current_calls %}
+                        <span class="called-word">{{ word }}</span>
+                    {% endfor %}
+                {% else %}
+                    <em>No words called yet</em>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+            <button class="btn btn-secondary" onclick="checkForBingo()">🔍 Check My Card</button>
+        </div>
+    </div>
+</div>
+
+<div class="winner-celebration" id="winnerCelebration">
+    <div class="winner-content">
+        <h1>🎉 BINGO! 🎉</h1>
+        <h2>Congratulations!</h2>
+        <p style="font-size: 1.2rem; margin: 20px 0;">You won the birthday bingo game!</p>
+        <div style="font-size: 4rem; margin: 20px 0;">🏆</div>
+        <button class="btn" onclick="closeCelebration()">Awesome!</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const socket = io();
+    const playerCard = {{ player_data.card | tojsonfilter }};
+    const playerMarked = {{ player_data.marked | tojsonfilter }};
+    let currentCalls = {{ current_calls | tojsonfilter }};
+    
+    function initBingoCard() {
+        const bingoGrid = document.getElementById('bingoGrid');
+        bingoGrid.innerHTML = '';
+        
+        for (let i = 0; i < 25; i++) {
+            const square = document.createElement('div');
+            square.className = 'bingo-square';
+            square.textContent = playerCard[i];
+            square.onclick = () => markSquare(i);
+            square.id = `square-${i}`;
+            
+            // Mark center square as FREE
+            if (i === 12) {
+                square.classList.add('free', 'marked');
+                square.textContent = 'FREE';
+                playerMarked[12] = true;
+            } else if (playerMarked[i]) {
+                square.classList.add('marked');
+            }
+            
+            bingoGrid.appendChild(square);
+        }
+    }
+    
+    function markSquare(index) {
+        if (index === 12) return; // Center square is always free
+        
+        const word = playerCard[index];
+        if (currentCalls.includes(word)) {
+            socket.emit('mark_square', {square_index: index});
+        } else {
+            showToast('This word hasn\'t been called yet!', 'warning');
+        }
+    }
+    
+    function checkForBingo() {
+        // This is just a visual check for the player
+        const marked = playerMarked.slice();
+        marked[12] = true; // Center is always marked
+        
+        let hasWin = false;
+        
+        // Check rows
+        for (let i = 0; i < 5; i++) {
+            if (marked[i*5] && marked[i*5+1] && marked[i*5+2] && marked[i*5+3] && marked[i*5+4]) {
+                hasWin = true;
+                break;
+            }
+        }
+        
+        // Check columns
+        if (!hasWin) {
+            for (let j = 0; j < 5; j++) {
+                if (marked[j] && marked[j+5] && marked[j+10] && marked[j+15] && marked[j+20]) {
+                    hasWin = true;
+                    break;
+                }
+            }
+        }
+        
+        // Check diagonals
+        if (!hasWin) {
+            if ((marked[0] && marked[6] && marked[12] && marked[18] && marked[24]) ||
+                (marked[4] && marked[8] && marked[12] && marked[16] && marked[20])) {
+                hasWin = true;
+            }
+        }
+        
+        if (hasWin) {
+            showToast('You might have BINGO! The system will check automatically.', 'success');
+        } else {
+            showToast('Keep playing! You don\'t have a complete line yet.', 'info');
+        }
+    }
+    
+    function showToast(message, type = 'info') {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#4CAF50' : type === 'warning' ? '#ff9800' : '#2196F3'};
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 3000);
+    }
+    
+    function closeCelebration() {
+        document.getElementById('winnerCelebration').style.display = 'none';
+    }
+    
+    // Socket events
+    socket.on('word_called', function(data) {
+        const word = data.word;
+        if (!currentCalls.includes(word)) {
+            currentCalls.push(word);
+            
+            // Add to called words display
+            const calledDisplay = document.getElementById('calledWordsDisplay');
+            if (currentCalls.length === 1) {
+                calledDisplay.innerHTML = '';
+            }
+            
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'called-word';
+            wordSpan.textContent = word;
+            calledDisplay.appendChild(wordSpan);
+            
+            // Update count
+            document.getElementById('wordsCalledCount').textContent = currentCalls.length;
+            
+            // Highlight matching squares
+            for (let i = 0; i < 25; i++) {
+                if (playerCard[i] === word && i !== 12) {
+                    const square = document.getElementById(`square-${i}`);
+                    square.style.background = '#ffeb3b';
+                    square.style.borderColor = '#ffc107';
+                    
+                    setTimeout(() => {
+                        if (!playerMarked[i]) {
+                            square.style.background = '#f8f9fa';
+                            square.style.borderColor = '#ddd';
+                        }
+                    }, 2000);
+                }
+            }
+            
+            showToast(`New word called: ${word}`, 'info');
+        }
+    });
+    
+    socket.on('square_marked', function(data) {
+        const index = data.square_index;
+        playerMarked[index] = true;
+        
+        const square = document.getElementById(`square-${index}`);
+        square.classList.add('marked');
+        square.style.background = '#4CAF50';
+        square.style.borderColor = '#4CAF50';
+    });
+    
+    socket.on('game_winner', function(data) {
+        if (data.winner === '{{ player_data.name }}') {
+            document.getElementById('winnerCelebration').style.display = 'flex';
+        } else {
+            showToast(`${data.winner} won the game! 🎉`, 'success');
+        }
+    });
+    
+    socket.on('update_calls', function(data) {
+        currentCalls = data.calls;
+        document.getElementById('wordsCalledCount').textContent = currentCalls.length;
+    });
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        initBingoCard();
+        document.getElementById('gameStatus').textContent = 'Connected - Ready to play!';
+        document.getElementById('gameStatus').style.color = '#4CAF50';
+    });
+</script>
+{% endblock %}
